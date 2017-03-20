@@ -540,7 +540,7 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./master-install.sh '), parameters('location'), ' init')]"
+                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' init')]"
                 }
             },
             "dependsOn": [
@@ -563,12 +563,12 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./master-install.sh '), parameters('location'))]"
+                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'))]"
                 }
             },
             "dependsOn": [
                 "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName1'))]",
-                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName0'),'/masterInstallCustomScript')]"
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName0') ,'masterInstallCustomScript')]"
             ]
         },        
         {
@@ -587,12 +587,12 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./master-install.sh '), parameters('location'))]"
+                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'))]"
                 }
             },
             "dependsOn": [
                 "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName2'))]",
-                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName0'),'/masterInstallCustomScript')]"
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName0') ,'masterInstallCustomScript')]"
             ]
         },        
         {
