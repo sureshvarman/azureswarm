@@ -1,0 +1,614 @@
+ {
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location" : {
+            "defaultValue": "westeurope",
+            "type": "String"
+        },
+        "masterAvailibilitySetName": {
+            "defaultValue": "masterAvSet",
+            "type": "String"
+        },
+        "masterVmNamePrefix": {
+            "defaultValue": "swarmMaster",
+            "type": "String"
+        },
+        "masterVmSize": {
+            "defaultValue": "Standard_DS1_v2",
+            "type": "String"
+        },
+        "sshPublicKey": {
+            "defaultValue": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrb8CdHVAlJKJeHtRoEdFsKlNoxemhzcjVmiV1aR0PB5UqPuxyWmrsNKudSdNXaQI+d7B179j1LZ1SbwLNVZS8xGhGA84TLY8FdBPrqd7QDpZGr+OGmcIaEs/7hgSUVlHOIv6krYCgIho+bgvXAhQbBu7GhinUWyvraeYOQxkB9A/LuTacq4je0sfsYBf18OwtNTcyIwGsDMg9vNg+ML3/OQoNOGUCMiHkfin65gJo8l/Ckjj9Of8oHWOzH3RYSGbkZ9qhVq6dAhyB0yIbRTz0p5nML8eBg/rKeB1s7tCi6eq86HFLvhzv5qjP3hnplk1cgpp1V7VEw8og8YefD3Rh",
+            "type": "String"
+        },
+        "adminUserName": {
+            "defaultValue": "dm",
+            "type": "String"
+        },
+        "extLbName": {
+            "defaultValue": "ExtLB",
+            "type": "String"
+        },
+        "masterVmNicNamePrefix": {
+            "defaultValue": "masterVmNic",
+            "type": "String"
+        },
+        "ExtLbPublicIpName": {
+            "defaultValue": "ExtPubIp",
+            "type": "String"
+        },
+        "extLbHttpProbeUri": {
+            "defaultValue": "/index.html",
+            "type": "String"
+        },        
+        "vnetName": {
+            "defaultValue": "[concat(resourceGroup().name, '-vnet')]",
+            "type": "String"
+        },
+        "diagStorageAccountName": {
+            "defaultValue": "bestestdiag385",
+            "type": "String"
+        },
+        "diskStorageAccountName": {
+            "defaultValue": "[concat(resourceGroup().name, 'disks')]",
+            "type": "String"
+        }
+    },
+    "variables": {
+      "masterVmName0" : "[concat(parameters('masterVmNamePrefix'), '0')]",
+      "masterVmName1" : "[concat(parameters('masterVmNamePrefix'), '1')]",
+      "masterVmName2" : "[concat(parameters('masterVmNamePrefix'), '2')]",
+      "masterVmNicName0": "[concat(parameters('masterVmNicNamePrefix'), '0')]",
+      "masterVmNicName1": "[concat(parameters('masterVmNicNamePrefix'), '1')]",
+      "masterVmNicName2": "[concat(parameters('masterVmNicNamePrefix'), '2')]",      
+      "masterNetworkSecurityGroupName": "[concat(parameters('masterVmNamePrefix'), '-nsg')]",
+      "extLbFrontEndPoolId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/loadBalancers/', parameters('extLbName'), '/frontendIPConfigurations/LoadBalancerFrontEnd')]",
+      "extLbHttpBackEndAddressPoolId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/loadBalancers/', parameters('extLbName'), '/backendAddressPools/gatewayPool')]",
+      "extLbHttpBackEndProbeId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/loadBalancers/', parameters('extLbName'), '/probes/gatewayProbe')]"
+    },
+    "resources": [
+        {
+            "comments": "VM set for High Availability, ensuring all VMs are distributed across 3 fault domains and 5 update domains",
+            "type": "Microsoft.Compute/availabilitySets",
+            "sku": {
+                "name": "Classic"
+            },
+            "name": "[parameters('masterAvailibilitySetName')]",
+            "apiVersion": "2016-04-30-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "platformUpdateDomainCount": 5,
+                "platformFaultDomainCount": 3,
+                /*"virtualMachines": [
+                    {
+                        "id": "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName0'))]"
+                    },
+                    {
+                        "id": "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName1'))]"
+                    },
+                    {
+                        "id": "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName2'))]"
+                    }
+                ])*/
+            },
+            "dependsOn": [
+                /*"[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName0'))]",
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName1'))]",
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName2'))]"*/
+            ]
+        },
+        {
+            "comments": "The zero master VM will init the docker swarm.",
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[variables('masterVmName0')]",
+            "apiVersion": "2016-04-30-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('masterAvailibilitySetName'))]"
+                },
+                "hardwareProfile": {
+                    "vmSize": "[parameters('masterVmSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "Canonical",
+                        "offer": "UbuntuServer",
+                        "sku": "16.04-LTS",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Linux",
+                        "name": "[variables('masterVmName0')]",
+                        "createOption": "FromImage",
+                        "vhd": {
+                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('masterVmName0'),'-', uniqueString(resourceGroup().id),'.vhd'))]"
+                        },
+                        "caching": "ReadWrite"
+                    },
+                    "dataDisks": []
+                },
+                "osProfile": {
+                    "computerName": "[variables('masterVmName0')]",
+                    "adminUsername": "[parameters('adminUserName')]",
+                    "linuxConfiguration": {
+                        "disablePasswordAuthentication": true,
+                        "ssh": {
+                            "publicKeys": [
+                                {
+                                    "path": "[concat('/home/', parameters('adminUserName'), '/.ssh/authorized_keys')]",
+                                    "keyData": "[parameters('sshPublicKey')]"
+                                }
+                            ]
+                        }
+                    },
+                    "secrets": []
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('masterVmNicName0'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[concat('https://', parameters('diagStorageAccountName'), '.blob.core.windows.net/')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/availabilitySets', parameters('masterAvailibilitySetName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('diskStorageAccountName'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces', variables('masterVmNicName0'))]"
+            ]
+        },
+        {
+            "comments": "Additional master vm.",
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[variables('masterVmName1')]",
+            "apiVersion": "2016-04-30-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('masterAvailibilitySetName'))]"
+                },
+                "hardwareProfile": {
+                    "vmSize": "[parameters('masterVmSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "Canonical",
+                        "offer": "UbuntuServer",
+                        "sku": "16.04-LTS",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Linux",
+                        "name": "[variables('masterVmName1')]",
+                        "createOption": "FromImage",
+                        "vhd": {
+                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('masterVmName1'),'-', uniqueString(resourceGroup().id),'.vhd'))]"
+                        },
+                        "caching": "ReadWrite"
+                    },
+                    "dataDisks": []
+                },
+                "osProfile": {
+                    "computerName": "[variables('masterVmName1')]",
+                    "adminUsername": "[parameters('adminUserName')]",
+                    "linuxConfiguration": {
+                        "disablePasswordAuthentication": true,
+                        "ssh": {
+                            "publicKeys": [
+                                {
+                                    "path": "[concat('/home/', parameters('adminUserName'), '/.ssh/authorized_keys')]",
+                                    "keyData": "[parameters('sshPublicKey')]"
+                                }
+                            ]
+                        }
+                    },
+                    "secrets": []
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('masterVmNicName1'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[concat('https://', parameters('diagStorageAccountName'), '.blob.core.windows.net/')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/availabilitySets', parameters('masterAvailibilitySetName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('diskStorageAccountName'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces', variables('masterVmNicName1'))]"
+            ]
+        },
+        {
+            "comments": "Additional master vm.",
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[variables('masterVmName2')]",
+            "apiVersion": "2016-04-30-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('masterAvailibilitySetName'))]"
+                },
+                "hardwareProfile": {
+                    "vmSize": "[parameters('masterVmSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "Canonical",
+                        "offer": "UbuntuServer",
+                        "sku": "16.04-LTS",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Linux",
+                        "name": "[variables('masterVmName2')]",
+                        "createOption": "FromImage",
+                        "vhd": {
+                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('masterVmName2'),'-', uniqueString(resourceGroup().id),'.vhd'))]"
+                        },
+                        "caching": "ReadWrite"
+                    },
+                    "dataDisks": []
+                },
+                "osProfile": {
+                    "computerName": "[variables('masterVmName2')]",
+                    "adminUsername": "[parameters('adminUserName')]",
+                    "linuxConfiguration": {
+                        "disablePasswordAuthentication": true,
+                        "ssh": {
+                            "publicKeys": [
+                                {
+                                    "path": "[concat('/home/', parameters('adminUserName'), '/.ssh/authorized_keys')]",
+                                    "keyData": "[parameters('sshPublicKey')]"
+                                }
+                            ]
+                        }
+                    },
+                    "secrets": []
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('masterVmNicName2'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[concat('https://', parameters('diagStorageAccountName'), '.blob.core.windows.net/')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/availabilitySets', parameters('masterAvailibilitySetName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('diskStorageAccountName'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces', variables('masterVmNicName2'))]"
+            ]
+        },
+        {
+            "comments": "Public facing loadbalancer, acting as single public entry point to env. SSH is natted to master pool, http is balanced to master pool.",
+            "type": "Microsoft.Network/loadBalancers",
+            "name": "[parameters('extLbName')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "frontendIPConfigurations": [
+                    {
+                        "name": "LoadBalancerFrontEnd",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('ExtLbPublicIpName'))]"
+                            }
+                        }
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "gatewayPool"
+                    }
+                ],
+                "loadBalancingRules": [
+                    {
+                        "name": "gatewayBalance",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('extLbFrontEndPoolId')]"
+                            },
+                            "frontendPort": 80,
+                            "backendPort": 8080,
+                            "enableFloatingIP": false,
+                            "idleTimeoutInMinutes": 4,
+                            "protocol": "Tcp",
+                            "loadDistribution": "Default",
+                            "backendAddressPool": {
+                                "id": "[variables('extLbHttpBackEndAddressPoolId')]"
+                            },
+                            "probe": {
+                                "id": "[variables('extLbHttpBackEndProbeId')]"
+                            }
+                        }
+                    }
+                ],
+                "probes": [
+                    {
+                        "name": "gatewayProbe",
+                        "properties": {
+                            "protocol": "Http",
+                            "port": 8080,
+                            "requestPath": "[parameters('extLbHttpProbeUri')]",
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    }
+                ],
+                "inboundNatRules": [
+                    {
+                        "name": "sshToMaster0",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('extLbFrontEndPoolId')]"
+                            },
+                            "frontendPort": 2200,
+                            "backendPort": 22,
+                            "protocol": "Tcp"
+                        }
+                    },
+                    {
+                        "name": "sshToMaster1",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('extLbFrontEndPoolId')]"
+                            },
+                            "frontendPort": 2201,
+                            "backendPort": 22,
+                            "protocol": "Tcp"
+                        }
+                    },
+                    {
+                        "name": "sshToMaster2",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('extLbFrontEndPoolId')]"
+                            },
+                            "frontendPort": 2202,
+                            "backendPort": 22,
+                            "protocol": "Tcp"
+                        }
+                    }
+                ],
+                "outboundNatRules": [],
+                "inboundNatPools": []
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', parameters('ExtLbPublicIpName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[variables('masterVmNicName0')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            //"privateIPAddress": "10.1.3.4",
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/default')]"
+                            },
+                            "loadBalancerBackendAddressPools": [
+                                {
+                                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('extLbName')), '/backendAddressPools/gatewayPool')]"
+                                }
+                            ],
+                            "loadBalancerInboundNatRules": [
+                                {
+                                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('extLbName')), '/inboundNatRules/sshToMaster0')]"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": []
+                },
+                "enableIPForwarding": false,
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('masterNetworkSecurityGroupName'))]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+                "[resourceId('Microsoft.Network/loadBalancers', parameters('extLbName'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('masterNetworkSecurityGroupName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[variables('masterVmNicName1')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            //"privateIPAddress": "10.1.3.5",
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/default')]"
+                            },
+                            "loadBalancerBackendAddressPools": [
+                                {
+                                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('extLbName')), '/backendAddressPools/gatewayPool')]"
+                                }
+                            ],
+                            "loadBalancerInboundNatRules": [
+                                {
+                                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('extLbName')), '/inboundNatRules/sshToMaster1')]"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": []
+                },
+                "enableIPForwarding": false,
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('masterNetworkSecurityGroupName'))]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+                "[resourceId('Microsoft.Network/loadBalancers', parameters('extLbName'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('masterNetworkSecurityGroupName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[variables('masterVmNicName2')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            //"privateIPAddress": "10.1.3.5",
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/default')]"
+                            },
+                            "loadBalancerBackendAddressPools": [
+                                {
+                                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('extLbName')), '/backendAddressPools/gatewayPool')]"
+                                }
+                            ],
+                            "loadBalancerInboundNatRules": [
+                                {
+                                    "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('extLbName')), '/inboundNatRules/sshToMaster2')]"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": []
+                },
+                "enableIPForwarding": false,
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('masterNetworkSecurityGroupName'))]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+                "[resourceId('Microsoft.Network/loadBalancers', parameters('extLbName'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('masterNetworkSecurityGroupName'))]"
+            ]
+        },
+        {
+            "comments": "net work security group applied to master nodes.",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "name": "[variables('masterNetworkSecurityGroupName')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "default-allow-ssh",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "22",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1000,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-http",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "8080",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1010,
+                            "direction": "Inbound"
+                        }
+                    }
+                ]
+            },
+            "dependsOn": []
+        },
+        {
+            "comments": "Public IP for external loadbalancer and ssh nat access.",
+            "type": "Microsoft.Network/publicIPAddresses",
+            "name": "[parameters('ExtLbPublicIpName')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publicIPAllocationMethod": "Dynamic",
+                "idleTimeoutInMinutes": 4
+            },
+            "dependsOn": []
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "name": "[parameters('vnetName')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.0.0.0/16"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "default",
+                        "properties": {
+                            "addressPrefix": "10.0.0.0/21"
+                        }
+                    }
+                ]
+            },
+            "dependsOn": []
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "Premium_LRS",
+                "tier": "Premium"
+            },
+            "kind": "Storage",
+            "name": "[parameters('diskStorageAccountName')]",
+            "apiVersion": "2016-01-01",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "properties": {},
+            "dependsOn": []
+        }
+    ]
+}
