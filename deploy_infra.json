@@ -567,7 +567,8 @@
                 }
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName1'))]"
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName1'))]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName0'),'/masterInstallCustomScript')]"
             ]
         },        
         {
@@ -590,7 +591,8 @@
                 }
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName2'))]"
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName2'))]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName0'),'/masterInstallCustomScript')]"
             ]
         },        
         {
