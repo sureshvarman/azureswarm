@@ -1,7 +1,6 @@
 #!/bin/bash
-if $1 = init 
-  echo "init for swarm"
-fi;
+DATACENTER=$1
+echo "datacenter=$1"
 echo "updating apt" && sudo apt-get update
 echo "loading key from p80.pool.sks-keyservers.net"
 sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
@@ -17,7 +16,6 @@ if [ "init" = "$1" ]
   then sudo echo "initializing swarm" && sudo docker swarm init --advertise-addr eth0
   else echo "joining swarm" && sudo docker swarm join --token $(nc swarmMaster0 8888 | tail -n1) swarmMaster0:2377
 fi
-
 sudo echo "adding consul agent config"
 ADV_ADDR=$(ifconfig | grep -A1 "eth0" | grep -o "inet addr:\S*" | grep -o -e "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*")
 DOCKER_HOST=$(hostname)
@@ -27,7 +25,7 @@ sudo mkdir /consul
 sudo mkdir /consul/config
 sudo mkdir /consul/data
 #sudo echo "{\"node_name\": \"$DOCKER_HOST\",\"advertise_addr\": \"$ADV_ADDR\"}" > /consul/agent-config.json
-sudo echo "{\"advertise_addr\": \"$ADV_ADDR\"}" > /consul/config/agent-config.json
+sudo echo "{\"datacenter\": \"$DATACENTER\",\"advertise_addr\": \"$ADV_ADDR\"}" > /consul/config/agent-config.json
 sudo echo "configuring netcat swarm token publish via rc.local"
 sudo systemctl enable rc-local.service
 sudo echo '#!/bin/bash
