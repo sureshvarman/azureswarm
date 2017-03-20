@@ -569,7 +569,7 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' ', variables('masterVmName0'), ' init')]"
+                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' ', variables('masterVmName0'), ' ', parameters('adminUserName'), ' init')]"
                 }
             },
             "dependsOn": [
@@ -592,7 +592,7 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' ', variables('masterVmName0'))]"
+                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' ', variables('masterVmName0'), ' ', parameters('adminUserName'))]"
                 }
             },
             "dependsOn": [
@@ -616,7 +616,7 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' ', variables('masterVmName0'))]"
+                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' ', variables('masterVmName0'), ' ', parameters('adminUserName'))]"
                 }
             },
             "dependsOn": [
@@ -945,7 +945,7 @@
                                   ]
                               },
                               "protectedSettings": {
-                                  "commandToExecute": "[concat('./worker-install.sh ', parameters('location'), ' ', variables('masterVmName0'))]"
+                                  "commandToExecute": "[concat('./worker-install.sh ', parameters('location'), ' ', variables('masterVmName0'), ' ', parameters('adminUserName'))]"
                               }
                           }
                         }

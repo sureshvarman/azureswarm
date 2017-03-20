@@ -1,8 +1,10 @@
 #!/bin/bash
 DATACENTER=$1
 MASTERVMNAME=$2
+ADMINUSER=$3
 echo "datacenter=$1"
 echo "masterVmName=$2"
+echo "adminUserName=$3"
 echo "updating apt" && sudo apt-get update
 echo "loading key from p80.pool.sks-keyservers.net"
 sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
@@ -10,11 +12,11 @@ echo "adding repo" && sudo apt-add-repository 'deb https://apt.dockerproject.org
 echo "updating apt again" && sudo apt-get update
 echo "updating cache policy" && apt-cache policy docker-engine
 echo "installing docker" && sudo apt-get install -y docker-engine
-echo "adding user to docker group" && sudo usermod -aG docker dm
+echo "adding user to docker group" && sudo usermod -aG docker $3
 sudo echo "setting nodeType in /etc/docker/daemon.json" && echo '{  "labels": ["nodetype=master"]}' > daemon.json
 sudo mv daemon.json /etc/docker/
 sudo echo "restarting docker" && systemctl restart docker
-if [ "init" = "$3" ]
+if [ "init" = "$4" ]
   then sudo echo "initializing swarm" && sudo docker swarm init --advertise-addr eth0
   else JOINTOKEN=$(curl $2:8888/manager-token.txt); echo "joining swarm with token $JOINTOKEN" && sudo docker swarm join --token $JOINTOKEN $2:2377
 fi
