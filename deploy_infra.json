@@ -53,7 +53,19 @@
         "diskStorageAccountName": {
             "defaultValue": "[concat(resourceGroup().name, 'disks')]",
             "type": "String"
-        }
+        },
+        "workerPoolSize": {
+            "defaultValue": "3",
+            "type": "String"
+        },
+        "workerPoolVmSize": {
+            "defaultValue": "Standard_DS1_v2",
+            "type": "String"
+        },
+        "workerPoolScaleSetName": {
+            "defaultValue": "swarmPool",
+            "type": "String"
+        },
     },
     "variables": {
       "masterVmName0" : "[concat(parameters('masterVmNamePrefix'), '0')]",
@@ -540,7 +552,7 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' init')]"
+                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' ', variables('masterVmName0'), ' init')]"
                 }
             },
             "dependsOn": [
@@ -563,7 +575,7 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'))]"
+                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' ', variables('masterVmName0'))]"
                 }
             },
             "dependsOn": [
@@ -587,7 +599,7 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'))]"
+                    "commandToExecute": "[concat('./master-install.sh ', parameters('location'), ' ', variables('masterVmName0'))]"
                 }
             },
             "dependsOn": [
@@ -680,6 +692,120 @@
             "tags": {},
             "properties": {},
             "dependsOn": []
-        }
+        },
+        {
+            "comments": "VM scale set for swarm worker pool"
+            "type": "Microsoft.Compute/virtualMachineScaleSets",
+            "sku": {
+                "name": "[parameters('workerPoolVmSize')]",
+                "tier": "Standard",
+                "capacity": "[parameters('workerPoolSize')]"
+            },
+            "name": "[parameters('workerPoolScaleSetName')]",
+            "apiVersion": "2015-06-15",
+            "location": "[parameters('location')]",
+            "properties": {
+                "upgradePolicy": {
+                    "mode": "Manual"
+                },
+                "virtualMachineProfile": {
+                    "osProfile": {
+                        "computerNamePrefix": "[concat(parameters('workerPoolScaleSetName'),'Worker')]",
+                        "adminUsername": "[parameters('adminUserName')]",
+                        "linuxConfiguration": {
+                            "disablePasswordAuthentication": true,
+                            "ssh": {
+                                "publicKeys": [
+                                    {
+                                        "path": "[concat('/home/', parameters('adminUserName'), '/.ssh/authorized_keys')]",
+                                        "keyData": "[parameters('sshPublicKey')]"                                    }
+                                ]
+                            }
+                        },
+                        "secrets": [],
+                        //"adminPassword": "[parameters('virtualMachineScaleSets_besswarm_adminPassword')]"
+                    },
+                    "storageProfile": {
+                        "osDisk": {
+                            "vhdContainers": [
+                                "[concat('https://', uniqueString(resourceGroup().idhttps://dghqqm72gtxsebesswarmfsa.blob.core.windows.net/besswarmfvhd",
+                                "https://5ecw35qbshxkibesswarmfsa.blob.core.windows.net/besswarmfvhd",
+                                "https://2jouroxiwyofubesswarmfsa.blob.core.windows.net/besswarmfvhd",
+                                "https://7nsdroer4f57obesswarmfsa.blob.core.windows.net/besswarmfvhd",
+                                "https://oelsxiqg76ktsbesswarmfsa.blob.core.windows.net/besswarmfvhd"
+                            ],
+                            "name": "[concat(parameters('workerPoolScaleSetName'),'fosdisk')]",
+                            "createOption": "FromImage",
+                            "caching": "ReadOnly"
+                        },
+                        "imageReference": {
+                            "publisher": "Canonical",
+                            "offer": "UbuntuServer",
+                            "sku": "16.04.0-LTS",
+                            "version": "latest"
+                        }
+                    },
+                    "networkProfile": {
+                        "networkInterfaceConfigurations": [
+                            {
+                                "name": "[concat(parameters('workerPoolScaleSetName'),'fnic')]",
+                                "properties": {
+                                    "primary": true,
+                                    "ipConfigurations": [
+                                        {
+                                            "name": "[concat(parameters('workerPoolScaleSetName'),'fipconfig')]",
+                                            "properties": {
+                                                "subnet": {
+                                                    "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), concat('/subnets/', variables('subnetName')))]"
+                                                },
+                                                /*"loadBalancerBackendAddressPools": [
+                                                    {
+                                                        "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_besswarmflb_name')), concat('/backendAddressPools/', parameters('scaleSetName'),'fbepool'))]"
+                                                    }
+                                                ],
+                                                "loadBalancerInboundNatPools": [
+                                                    {
+                                                        "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_besswarmflb_name')), concat('/inboundNatPools/', parameters('scaleSetName'),'fnatpool'))]"
+                                                    }
+                                                ]*/
+                                            }
+                                        }
+                                    ],
+                                    /*"networkSecurityGroup": {
+                                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('swarmWorkerNetworkSecurityGroupName'))]"
+                                    }*/
+                                }
+                            }
+                        ]
+                    },
+                    "extensionProfile": {
+                      "extensions": [
+                        {
+                          "name" : "swarmJoinCustomScript",
+                          "properties": {
+                              "publisher": "Microsoft.Azure.Extensions",
+                              "type": "CustomScript",
+                              "typeHandlerVersion": "2.0",
+                              "autoUpgradeMinorVersion": true,
+                              "settings": {
+                                  "fileUris": [
+                                      "https://github.com/OpusCapitaBusinessNetwork/bnp/wiki/swarm-worker-install.sh"
+                                  ]
+                              },
+                              "protectedSettings": {
+                                  "commandToExecute": "./swarm-worker-install.sh"
+                              }
+                          }
+                        }
+                      ]
+                    }
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+                //"[resourceId('Microsoft.Network/networkSecurityGroups', parameters('swarmWorkerNetworkSecurityGroupName'))]"
+                //"[resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_besswarmflb_name'))]"
+            ]
+        }        
     ]
 }
