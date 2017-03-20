@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 if $1 = init 
   echo "init for swarm"
 fi;

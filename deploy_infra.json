@@ -525,6 +525,29 @@
             ]
         },
         {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('masterVmName0'), '/masterInstallCustomScript')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": [
+                        "https://raw.githubusercontent.com/gr4per/azureswarm/master/master-install.sh"
+                    ]
+                },
+                "protectedSettings": {
+                    "commandToExecute": "./master-install.sh init"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName0'))]"
+            ]
+        },        
+        {
             "comments": "net work security group applied to master nodes.",
             "type": "Microsoft.Network/networkSecurityGroups",
             "name": "[variables('masterNetworkSecurityGroupName')]",
