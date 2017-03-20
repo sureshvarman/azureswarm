@@ -12,7 +12,7 @@ echo "adding user to docker group" && sudo usermod -aG docker dm
 sudo echo "setting nodeType in /etc/docker/daemon.json" && echo '{  "labels": ["nodetype=master"]}' > daemon.json
 sudo mv daemon.json /etc/docker/
 sudo echo "restarting docker" && systemctl restart docker
-if [ "init" = "$1" ]
+if [ "init" = "$2" ]
   then sudo echo "initializing swarm" && sudo docker swarm init --advertise-addr eth0
   else echo "joining swarm" && sudo docker swarm join --token $(nc swarmMaster0 8888 | tail -n1) swarmMaster0:2377
 fi

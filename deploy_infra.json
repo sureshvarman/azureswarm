@@ -123,7 +123,7 @@
                         "name": "[variables('masterVmName0')]",
                         "createOption": "FromImage",
                         "vhd": {
-                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('masterVmName0'),'-', uniqueString(resourceGroup().id),'.vhd'))]"
+                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('masterVmName0'),'-osDisk.vhd'))]"
                         },
                         "caching": "ReadWrite"
                     },
@@ -190,7 +190,7 @@
                         "name": "[variables('masterVmName1')]",
                         "createOption": "FromImage",
                         "vhd": {
-                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('masterVmName1'),'-', uniqueString(resourceGroup().id),'.vhd'))]"
+                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('masterVmName1'),'-osDisk.vhd'))]"
                         },
                         "caching": "ReadWrite"
                     },
@@ -257,7 +257,7 @@
                         "name": "[variables('masterVmName2')]",
                         "createOption": "FromImage",
                         "vhd": {
-                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('masterVmName2'),'-', uniqueString(resourceGroup().id),'.vhd'))]"
+                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('masterVmName2'),'-osDisk.vhd'))]"
                         },
                         "caching": "ReadWrite"
                     },
@@ -540,11 +540,57 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "./master-install.sh init"
+                    "commandToExecute": "[concat('./master-install.sh '), parameters('location'), ' init')]"
                 }
             },
             "dependsOn": [
                 "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName0'))]"
+            ]
+        },        
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('masterVmName1'), '/masterInstallCustomScript')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": [
+                        "https://raw.githubusercontent.com/gr4per/azureswarm/master/master-install.sh"
+                    ]
+                },
+                "protectedSettings": {
+                    "commandToExecute": "[concat('./master-install.sh '), parameters('location'))]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName1'))]"
+            ]
+        },        
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('masterVmName2'), '/masterInstallCustomScript')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": [
+                        "https://raw.githubusercontent.com/gr4per/azureswarm/master/master-install.sh"
+                    ]
+                },
+                "protectedSettings": {
+                    "commandToExecute": "[concat('./master-install.sh '), parameters('location'))]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName2'))]"
             ]
         },        
         {
