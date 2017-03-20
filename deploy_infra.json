@@ -46,6 +46,10 @@
             "defaultValue": "[concat(resourceGroup().name, '-vnet')]",
             "type": "String"
         },
+        "subnetName": {
+            "defaultValue": "default",
+            "type": "String"
+        },
         "diagStorageAccountName": {
             "defaultValue": "bestestdiag385",
             "type": "String"
@@ -66,6 +70,14 @@
             "defaultValue": "swarmPool",
             "type": "String"
         },
+        "scaleSetStorageAccountPrefix": {
+            "defaultValue": "scaleSetStorage",
+            "type": "String"
+        },
+        "workerPoolScaleSetName": {
+            "defaultValue": "swarmPool",
+            "type": "String"
+        }
     },
     "variables": {
       "masterVmName0" : "[concat(parameters('masterVmNamePrefix'), '0')]",
@@ -77,7 +89,12 @@
       "masterNetworkSecurityGroupName": "[concat(parameters('masterVmNamePrefix'), '-nsg')]",
       "extLbFrontEndPoolId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/loadBalancers/', parameters('extLbName'), '/frontendIPConfigurations/LoadBalancerFrontEnd')]",
       "extLbHttpBackEndAddressPoolId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/loadBalancers/', parameters('extLbName'), '/backendAddressPools/gatewayPool')]",
-      "extLbHttpBackEndProbeId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/loadBalancers/', parameters('extLbName'), '/probes/gatewayProbe')]"
+      "extLbHttpBackEndProbeId": "[concat(resourceGroup().id, '/providers/Microsoft.Network/loadBalancers/', parameters('extLbName'), '/probes/gatewayProbe')]",
+      "scaleSetStorageAccount0": "[uniqueString(concat(resourceGroup().id, parameters('scaleSetStorageAccountPrefix'), '0'))]",
+      "scaleSetStorageAccount1": "[uniqueString(concat(resourceGroup().id, parameters('scaleSetStorageAccountPrefix'), '1'))]",
+      "scaleSetStorageAccount2": "[uniqueString(concat(resourceGroup().id, parameters('scaleSetStorageAccountPrefix'), '2'))]",
+      "scaleSetStorageAccount3": "[uniqueString(concat(resourceGroup().id, parameters('scaleSetStorageAccountPrefix'), '3'))]",
+      "scaleSetStorageAccount4": "[uniqueString(concat(resourceGroup().id, parameters('scaleSetStorageAccountPrefix'), '4'))]"
     },
     "resources": [
         {
@@ -637,7 +654,72 @@
                             "sourceAddressPrefix": "*",
                             "destinationAddressPrefix": "*",
                             "access": "Allow",
+                            "priority": 1005,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-server-rpc",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "8300",
+                            "sourceAddressPrefix": "VirtualNetwork",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
                             "priority": 1010,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-serf-lan",
+                        "properties": {
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "8301",
+                            "sourceAddressPrefix": "VirtualNetwork",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1020,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-serf-wan",
+                        "properties": {
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "8302",
+                            "sourceAddressPrefix": "VirtualNetwork",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1030,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-api",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "8500",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1040,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-dns",
+                        "properties": {
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "8600",
+                            "sourceAddressPrefix": "VirtualNetwork",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1050,
                             "direction": "Inbound"
                         }
                     }
@@ -652,7 +734,7 @@
             "apiVersion": "2016-03-30",
             "location": "[parameters('location')]",
             "properties": {
-                "publicIPAllocationMethod": "Dynamic",
+                "publicIPAllocationMethod": "Static",
                 "idleTimeoutInMinutes": 4
             },
             "dependsOn": []
@@ -694,7 +776,77 @@
             "dependsOn": []
         },
         {
-            "comments": "VM scale set for swarm worker pool"
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "Premium_LRS",
+                "tier": "Premium"
+            },
+            "kind": "Storage",
+            "name": "[variables('scaleSetStorageAccount0')]",
+            "apiVersion": "2016-01-01",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "properties": {},
+            "dependsOn": []
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "Premium_LRS",
+                "tier": "Premium"
+            },
+            "kind": "Storage",
+            "name": "[variables('scaleSetStorageAccount1')]",
+            "apiVersion": "2016-01-01",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "properties": {},
+            "dependsOn": []
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "Premium_LRS",
+                "tier": "Premium"
+            },
+            "kind": "Storage",
+            "name": "[variables('scaleSetStorageAccount2')]",
+            "apiVersion": "2016-01-01",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "properties": {},
+            "dependsOn": []
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "Premium_LRS",
+                "tier": "Premium"
+            },
+            "kind": "Storage",
+            "name": "[variables('scaleSetStorageAccount3')]",
+            "apiVersion": "2016-01-01",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "properties": {},
+            "dependsOn": []
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "Premium_LRS",
+                "tier": "Premium"
+            },
+            "kind": "Storage",
+            "name": "[variables('scaleSetStorageAccount4')]",
+            "apiVersion": "2016-01-01",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "properties": {},
+            "dependsOn": []
+        },        
+        {
+            "comments": "VM scale set for swarm worker pool",
             "type": "Microsoft.Compute/virtualMachineScaleSets",
             "sku": {
                 "name": "[parameters('workerPoolVmSize')]",
@@ -728,13 +880,13 @@
                     "storageProfile": {
                         "osDisk": {
                             "vhdContainers": [
-                                "[concat('https://', uniqueString(resourceGroup().idhttps://dghqqm72gtxsebesswarmfsa.blob.core.windows.net/besswarmfvhd",
-                                "https://5ecw35qbshxkibesswarmfsa.blob.core.windows.net/besswarmfvhd",
-                                "https://2jouroxiwyofubesswarmfsa.blob.core.windows.net/besswarmfvhd",
-                                "https://7nsdroer4f57obesswarmfsa.blob.core.windows.net/besswarmfvhd",
-                                "https://oelsxiqg76ktsbesswarmfsa.blob.core.windows.net/besswarmfvhd"
+                                "[concat('https://', variables('scaleSetStorageAccount0'), '.blob.core.windows.net/', toLower(parameters('workerPoolScaleSetName')), 'vhd')]",
+                                "[concat('https://', variables('scaleSetStorageAccount1'), '.blob.core.windows.net/', toLower(parameters('workerPoolScaleSetName')), 'vhd')]",
+                                "[concat('https://', variables('scaleSetStorageAccount2'), '.blob.core.windows.net/', toLower(parameters('workerPoolScaleSetName')), 'vhd')]",
+                                "[concat('https://', variables('scaleSetStorageAccount3'), '.blob.core.windows.net/', toLower(parameters('workerPoolScaleSetName')), 'vhd')]",
+                                "[concat('https://', variables('scaleSetStorageAccount4'), '.blob.core.windows.net/', toLower(parameters('workerPoolScaleSetName')), 'vhd')]"
                             ],
-                            "name": "[concat(parameters('workerPoolScaleSetName'),'fosdisk')]",
+                            "name": "[concat(parameters('workerPoolScaleSetName'),'-osDisk')]",
                             "createOption": "FromImage",
                             "caching": "ReadOnly"
                         },
@@ -748,15 +900,15 @@
                     "networkProfile": {
                         "networkInterfaceConfigurations": [
                             {
-                                "name": "[concat(parameters('workerPoolScaleSetName'),'fnic')]",
+                                "name": "[concat(parameters('workerPoolScaleSetName'),'-nic')]",
                                 "properties": {
                                     "primary": true,
                                     "ipConfigurations": [
                                         {
-                                            "name": "[concat(parameters('workerPoolScaleSetName'),'fipconfig')]",
+                                            "name": "[concat(parameters('workerPoolScaleSetName'),'-ipconfig')]",
                                             "properties": {
                                                 "subnet": {
-                                                    "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), concat('/subnets/', variables('subnetName')))]"
+                                                    "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), concat('/subnets/', parameters('subnetName')))]"
                                                 },
                                                 /*"loadBalancerBackendAddressPools": [
                                                     {
@@ -789,11 +941,11 @@
                               "autoUpgradeMinorVersion": true,
                               "settings": {
                                   "fileUris": [
-                                      "https://github.com/OpusCapitaBusinessNetwork/bnp/wiki/swarm-worker-install.sh"
+                                      "https://raw.githubusercontent.com/gr4per/azureswarm/master/worker-install.sh"
                                   ]
                               },
                               "protectedSettings": {
-                                  "commandToExecute": "./swarm-worker-install.sh"
+                                  "commandToExecute": "[concat('./worker-install.sh ', parameters('location'), ' ', variables('masterVmName0'))]"
                               }
                           }
                         }
@@ -803,6 +955,11 @@
             },
             "dependsOn": [
                 "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount0'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount1'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount2'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount3'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount4'))]"
                 //"[resourceId('Microsoft.Network/networkSecurityGroups', parameters('swarmWorkerNetworkSecurityGroupName'))]"
                 //"[resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_besswarmflb_name'))]"
             ]
