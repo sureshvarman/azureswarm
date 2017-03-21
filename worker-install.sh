@@ -30,4 +30,6 @@ sudo mkdir /consul/data
 sudo echo "{\"datacenter\": \"$DATACENTER\",\"advertise_addr\": \"$ADV_ADDR\"}" > /consul/config/agent-config.json
 HOSTPREFIX=${MASTERVMNAME%?}
 sudo docker run -d -v /consul:/consul --name consul-agent --restart always --env SERVICE_IGNORE=true --net=host gliderlabs/consul-server -join ${HOSTPREFIX}0 -join ${HOSTPREFIX}1 -join ${HOSTPREFIX}2 -ui -bind=$ADV_ADDR -data-dir=/consul/data -config-dir=/consul/config
+sudo echo "starting consul registrator"
+sudo docker run -d --net=host --restart always --volume=/var/run/docker.sock:/tmp/docker.sock gliderlabs/registrator consul://localhost:8500
 sudo echo "consul setup finished"

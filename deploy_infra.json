@@ -122,9 +122,6 @@
                 ])*/
             },
             "dependsOn": [
-                /*"[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName0'))]",
-                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName1'))]",
-                "[resourceId('Microsoft.Compute/virtualMachines', variables('masterVmName2'))]"*/
             ]
         },
         {
@@ -959,7 +956,10 @@
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount1'))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount2'))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount3'))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount4'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('scaleSetStorageAccount4'))]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName0') ,'masterInstallCustomScript')]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName1') ,'masterInstallCustomScript')]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName2') ,'masterInstallCustomScript')]"
                 //"[resourceId('Microsoft.Network/networkSecurityGroups', parameters('swarmWorkerNetworkSecurityGroupName'))]"
                 //"[resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_besswarmflb_name'))]"
             ]
