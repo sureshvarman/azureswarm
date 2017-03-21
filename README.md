@@ -29,7 +29,7 @@ sudo docker service create --hostname="{{.Node.ID}}" --env SERVICE_NAME="consul-
 
 
 ### start consul registrator on all swarm nodes
-
+(this is done in master-install.sh and worker-install.sh)
 sudo docker run -d --net=host --volume=/var/run/docker.sock:/tmp/docker.sock gliderlabs/registrator consul://localhost:8500
 
 //alternative: run registrator as service
