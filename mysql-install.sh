@@ -6,10 +6,10 @@ echo "datacenter=$1"
 echo "masterVmName=$2"
 echo "adminUserName=$3"
 HOSTPREFIX=${MASTERVMNAME%?}
-export DEBIAN_FRONTEND="noninteractive"
 sudo apt-get update
-sudo debconf-set-selections <<< "mysql-server mysql-server/root_password password $ROOTPW"
-sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again password $ROOTPW"
+export DEBIAN_FRONTEND="noninteractive"
+sudo debconf-set-selections <<< "mysql-server mysql-server/root_password password $MYSQL_PW"
+sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again password $MYSQL_PW"
 sudo apt-get install -y mysql-server-5.7
 #sudo mysql_secure_installation
 ADV_ADDR=$(ifconfig | grep -A1 "eth0" | grep -o "inet addr:\S*" | grep -o -e "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*")

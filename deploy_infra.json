@@ -93,7 +93,11 @@
         "mysqlPassword": {
             "defaultValue": "notSecureP455w0rd",
             "type": "String"
-        }        
+        },        
+        "mysqlVmNicNamePrefix": {
+            "defaultValue": "mysqlVmNic",
+            "type": "String"
+        }
     },
     "variables": {
       "masterVmName0" : "[concat(parameters('masterVmNamePrefix'), '0')]",
@@ -111,7 +115,9 @@
       "scaleSetStorageAccount2": "[uniqueString(concat(resourceGroup().id, parameters('scaleSetStorageAccountPrefix'), '2'))]",
       "scaleSetStorageAccount3": "[uniqueString(concat(resourceGroup().id, parameters('scaleSetStorageAccountPrefix'), '3'))]",
       "scaleSetStorageAccount4": "[uniqueString(concat(resourceGroup().id, parameters('scaleSetStorageAccountPrefix'), '4'))]",
-      "mysqlVmName0" : "[concat(parameters('mysqlVmNamePrefix'), '0')]"
+      "mysqlVmName0" : "[concat(parameters('mysqlVmNamePrefix'), '0')]",
+      "mysqlNetworkSecurityGroupName": "[concat(parameters('mysqlVmNamePrefix'), '-nsg')]",
+      "mysqlVmNicName0" : "[concat(parameters('mysqlVmNicNamePrefix'), '0')]"
     },
     "resources": [
         {
@@ -1048,6 +1054,44 @@
                 "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
                 "[resourceId('Microsoft.Network/networkSecurityGroups', variables('mysqlNetworkSecurityGroupName'))]"
             ]
+        },
+        {
+            "comments": "net work security group applied to mysql nodes.",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "name": "[variables('mysqlNetworkSecurityGroupName')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "default-allow-ssh",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "22",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1000,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-mysql",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "3306",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1005,
+                            "direction": "Inbound"
+                        }
+                    }
+                ]
+            },
+            "dependsOn": []
         },
         {
             "comments": "The mysqlServer0 is the cluster master.",
