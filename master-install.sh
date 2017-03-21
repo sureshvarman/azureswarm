@@ -20,16 +20,6 @@ if [ "init" = "$4" ]
   then sudo echo "initializing swarm" && sudo docker swarm init --advertise-addr eth0
   else JOINTOKEN=$(curl $2:8888/manager-token.txt); echo "joining swarm with token $JOINTOKEN" && sudo docker swarm join --token $JOINTOKEN $2:2377
 fi
-sudo echo "adding consul agent config"
-ADV_ADDR=$(ifconfig | grep -A1 "eth0" | grep -o "inet addr:\S*" | grep -o -e "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*")
-DOCKER_HOST=$(hostname)
-DEN=$(sudo docker info | grep "Name:" | grep -o "\S*" | grep -v "Name:")
-sudo echo "advertise_address=$ADV_ADDR, hostname=$DOCKER_HOST, docker engine name=$DEN"
-sudo mkdir /consul
-sudo mkdir /consul/config
-sudo mkdir /consul/data
-#sudo echo "{\"node_name\": \"$DOCKER_HOST\",\"advertise_addr\": \"$ADV_ADDR\"}" > /consul/agent-config.json
-sudo echo "{\"datacenter\": \"$DATACENTER\",\"advertise_addr\": \"$ADV_ADDR\"}" > /consul/config/agent-config.json
 sudo echo "configuring swarm token publish via rc.local"
 sudo systemctl enable rc-local.service
 sudo echo '#!/bin/bash
@@ -43,3 +33,17 @@ sudo cp publish_token.sh /etc/rc.local
 sudo echo "publishing swarm token"
 sudo bash publish_token.sh &
 sudo echo "swarm master init finished"
+sudo echo "starting consul server..."
+sudo echo "adding consul agent config"
+ADV_ADDR=$(ifconfig | grep -A1 "eth0" | grep -o "inet addr:\S*" | grep -o -e "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*")
+DOCKER_HOST=$(hostname)
+DEN=$(sudo docker info | grep "Name:" | grep -o "\S*" | grep -v "Name:")
+sudo echo "advertise_address=$ADV_ADDR, hostname=$DOCKER_HOST, docker engine name=$DEN"
+sudo mkdir /consul
+sudo mkdir /consul/config
+sudo mkdir /consul/data
+#sudo echo "{\"node_name\": \"$DOCKER_HOST\",\"advertise_addr\": \"$ADV_ADDR\"}" > /consul/agent-config.json
+sudo echo "{\"datacenter\": \"$DATACENTER\",\"advertise_addr\": \"$ADV_ADDR\"}" > /consul/config/agent-config.json
+HOSTPREFIX=${MASTERVMNAME%?}
+sudo docker run -d -v /consul:/consul --restart always --env SERVICE_IGNORE=true --net=host gliderlabs/consul-server -server -join ${HOSTPREFIX}0 -join ${HOSTPREFIX}1 -join ${HOSTPREFIX}2 -bootstrap-expect 3 -ui -bind=$ADV_ADDR -data-dir=/consul/data -config-dir=/consul/config
+sudo echo "consul setup finished"

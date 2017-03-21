@@ -16,6 +16,9 @@ echo "adding user to docker group" && sudo usermod -aG docker $3
 sudo echo '{  "labels": ["nodetype=worker"]}' > daemon.json
 sudo mv daemon.json /etc/docker/
 sudo systemctl restart docker
+JOINTOKEN=$(curl $2:8888/worker-token.txt)
+echo "joining swarm with token $JOINTOKEN" && sudo docker swarm join --token $JOINTOKEN $2:2377
+sudo echo "swarm worker init finished"
 sudo echo "adding consul agent config"
 ADV_ADDR=$(ifconfig | grep -A1 "eth0" | grep -o "inet addr:\S*" | grep -o -e "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*")
 DOCKER_HOST=$(hostname)
@@ -25,6 +28,6 @@ sudo mkdir /consul
 sudo mkdir /consul/config
 sudo mkdir /consul/data
 sudo echo "{\"datacenter\": \"$DATACENTER\",\"advertise_addr\": \"$ADV_ADDR\"}" > /consul/config/agent-config.json
-JOINTOKEN=$(curl $2:8888/worker-token.txt)
-echo "joining swarm with token $JOINTOKEN" && sudo docker swarm join --token $JOINTOKEN $2:2377
-sudo echo "swarm worker init finished"
+HOSTPREFIX=${MASTERVMNAME%?}
+sudo docker run -d -v /consul:/consul --name consul-agent --restart always --env SERVICE_IGNORE=true --net=host gliderlabs/consul-server -join ${HOSTPREFIX}0 -join ${HOSTPREFIX}1 -join ${HOSTPREFIX}2 -ui -bind=$ADV_ADDR -data-dir=/consul/data -config-dir=/consul/config
+sudo echo "consul setup finished"
