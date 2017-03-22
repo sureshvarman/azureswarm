@@ -44,6 +44,10 @@ add consul agent per mysql node and add healthcheck
 
 ## deploy services
 publish service ports to host directly using --publish mode=host
+services will run on the docker host's bridge network and expose ports via port mapping to the host
+Example: kong running on 10.0.0.4 node (swarmMaster0), sees interfaces eth0 and localhost
+eth0 has 172.17.0.2 and gateway 172.17.0.1
+using DNS server 168.63.129.16 (which is the only entry in its resolv.conf)
 
 ### postgre (required by kong for now)
 docker service create --publish mode=host,target=5432,published=5432 --env SERVICE_NAME=postgres --env POSTGRES_USER=kong --env POSTGRES_DB=kong --env POSTGRES_PASSWORD=kong --env SERVICE_5432_CHECK_TCP=true --env SERVICE_5432_CHECK_INTERVAL=15s --env SERVICE_5432_CHECK_TIMEOUT=3s --constraint "node.role == worker" postgres:9.4

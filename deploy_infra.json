@@ -39,7 +39,7 @@
             "type": "String"
         },
         "extLbHttpProbeUri": {
-            "defaultValue": "/index.html",
+            "defaultValue": "/status",
             "type": "String"
         },        
         "vnetName": {
@@ -398,7 +398,7 @@
                         "name": "gatewayProbe",
                         "properties": {
                             "protocol": "Http",
-                            "port": 8080,
+                            "port": 8001,
                             "requestPath": "[parameters('extLbHttpProbeUri')]",
                             "intervalInSeconds": 5,
                             "numberOfProbes": 2
@@ -458,7 +458,7 @@
                         "name": "ipconfig1",
                         "properties": {
                             //"privateIPAddress": "10.1.3.4",
-                            "privateIPAllocationMethod": "Dynamic",
+                            "privateIPAllocationMethod": "Static",
                             "subnet": {
                                 "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/default')]"
                             },
@@ -500,7 +500,7 @@
                         "name": "ipconfig1",
                         "properties": {
                             //"privateIPAddress": "10.1.3.5",
-                            "privateIPAllocationMethod": "Dynamic",
+                            "privateIPAllocationMethod": "Static",
                             "subnet": {
                                 "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/default')]"
                             },
@@ -542,7 +542,7 @@
                         "name": "ipconfig1",
                         "properties": {
                             //"privateIPAddress": "10.1.3.5",
-                            "privateIPAllocationMethod": "Dynamic",
+                            "privateIPAllocationMethod": "Static",
                             "subnet": {
                                 "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/default')]"
                             },
@@ -666,7 +666,7 @@
                         }
                     },
                     {
-                        "name": "allow-http",
+                        "name": "allow-kong-http",
                         "properties": {
                             "protocol": "TCP",
                             "sourcePortRange": "*",
@@ -675,6 +675,32 @@
                             "destinationAddressPrefix": "*",
                             "access": "Allow",
                             "priority": 1005,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-kong-https",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "8443",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1007,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-kong-api",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "8001",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1006,
                             "direction": "Inbound"
                         }
                     },
