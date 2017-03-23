@@ -62,3 +62,7 @@ sudo bash -c "echo \"nameserver $BRIDGE_IP\" > /etc/resolvconf/resolv.conf.d/hea
 sudo bash -c "echo \"search service.consul\" > /etc/resolvconf/resolv.conf.d/base"
 sudo resolvconf -u
 sudo echo "consul setup finished"
+
+# install jq, needed for auto deployments (swarm service checks)
+sudo apt-get install jq
+sudo echo "installation finished"

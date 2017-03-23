@@ -63,4 +63,8 @@ docker service create --env SERVICE_NAME=api-registrator --env CONSUL_HOST=consu
 2. Add private key to circleci project SSH permissions
 3. edit circle.yml and add a deployment
 
+ssh dm@52.233.155.169 -p 2200 <<EOF
+docker service update --force --image ocbesbn/redis:dev $(docker service ls | grep "ocbesbn/redis" | grep -o "\S*" | grep -m 1 \".*\")
+EOF
+      - exit
 
