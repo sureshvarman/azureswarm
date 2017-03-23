@@ -11,16 +11,16 @@ New-AzureRmResourceGroupDeployment -Name <String deploymentName> -ResourceGroupN
 This will setup following infrastructure
 * 1 Public IP with an Azure Load Balancer
 * 3 Master node VMs that can be sshed to via 2200, 2201, 2202 respectively and with <publicIP>:80 load balanced across 8080 on the 3 nodes
-..* Docker Engine (Swarm Manager)
-..* Consul server (Cluster of 3, already bootstrapped) with DNS integration to host and containers
-..* Consul registrator
-..* Kong Api Gateway
+  * Docker Engine (Swarm Manager)
+  * Consul server (Cluster of 3, already bootstrapped) with DNS integration to host and containers
+  * Consul registrator
+  * Kong Api Gateway
 * 1 Worker Node VM scale set with initially 3 Workers
-..* Docker Engine (Swarm Worker)
-..* Consul agent
-..* Consul registrator
+  * Docker Engine (Swarm Worker)
+  * Consul agent
+  * Consul registrator
 * 1 MySql server VM
-..* mysql with GMT zone, utf8 listening on 3306
+  * mysql with GMT zone, utf8 listening on 3306
 
 ## Docker Swarm services
 
@@ -49,12 +49,12 @@ docker service create --publish mode=host,target=3005,published=3005 --env MYSQL
 
 ### kong
 ```
-docker service create --mode global --publish mode=host,target=8080,published=8080 --publish mode=host,target=8443,published=8443 --publish mode=host,target=8001,published=8001 --env DNS_RESOLVER=172.17.0.1 --env SERVICE_NAME=kong --env KONG_DATABASE=postgres --env REDIS_AUTH=notSecureP455w0rd --env KONG_PG_HOST=postgres.service.consul --env KONG_PG_PORT=5432  --env APP_HOST=idpro.service.consul --env APP_HOST_PROTOCOL=http --env APP_HOST_PORT=3005 --env GATEWAY_SCHEME=http --env GATEWAY_IP=52.233.155.169 --env GATEWAY_PORT=8080 --env GATEWAY_CALLBACK=auth/callback --env POSTGRES_USER=kong --env POSTGRES_PASSWORD=kong --env POSTGRES_DB=kong --env LOG_PORT=5000 --env LOG_HOST=172.17.0.1 --env REDIS_HOST=redis.service.consul --env REDIS_PORT=6379 --env SERVICE_8001_CHECK_HTTP=/ --env SERVICE_8001_CHECK_INTERVAL=15s --env SERVICE_8001_CHECK_TIMEOUT=3s --constraint "node.role == worker" ocbesbn/api-gw:latest
+docker service create --mode global --publish mode=host,target=8080,published=8080 --publish mode=host,target=8443,published=8443 --publish mode=host,target=8001,published=8001 --env DNS_RESOLVER=172.17.0.1 --env SERVICE_NAME=kong --env KONG_DATABASE=postgres --env REDIS_AUTH=notSecureP455w0rd --env KONG_PG_HOST=postgres.service.consul --env KONG_PG_PORT=5432  --env APP_HOST=idpro.service.consul --env APP_HOST_PROTOCOL=http --env APP_HOST_PORT=3005 --env GATEWAY_SCHEME=http --env GATEWAY_IP=52.233.155.169 --env GATEWAY_PORT=80 --env GATEWAY_CALLBACK=auth/callback --env POSTGRES_USER=kong --env POSTGRES_PASSWORD=kong --env POSTGRES_DB=kong --env LOG_PORT=5000 --env LOG_HOST=172.17.0.1 --env REDIS_HOST=redis.service.consul --env REDIS_PORT=6379 --env SERVICE_8001_CHECK_HTTP=/ --env SERVICE_8001_CHECK_INTERVAL=15s --env SERVICE_8001_CHECK_TIMEOUT=3s --constraint "node.role == manager" ocbesbn/api-gw:latest
 ```
 
 ### api-registrator
 ```
-docker service create --env CONSUL_HOST=consul --env GATEWAY_CALLBACK=/auth/callback --env KONG_HOST=kong-8001 --env KONG_PORT=8001 --env API_REGISTRY_PORT=3004 --publish mode=host,target=3004,published=3004 --constraint "node.role == worker" ocbesbn/api-registrator:latest
+docker service create --env SERVICE_NAME=api-registrator --env CONSUL_HOST=consul --env GATEWAY_CALLBACK=/auth/callback --env KONG_HOST=kong-8001 --env KONG_PORT=8001 --env API_REGISTRY_PORT=3004 --publish mode=host,target=3004,published=3004 --constraint "node.role == worker" ocbesbn/api-registrator:latest
 ```
 
 ## Configure Automated Deployments
