@@ -22,9 +22,9 @@ This will setup following infrastructure
 * 1 MySql server VM
   * mysql with GMT zone, utf8 listening on 3306
 
-## Docker Swarm services
+# Docker Swarm services
 
-### Deploy services
+## Deploy infrastructure services
 publish service ports to host directly using --publish mode=host
 services will run on the docker host's bridge network and expose ports via port mapping to the host
 Example: kong running on 10.0.0.4 node (swarmMaster0), sees interfaces eth0 and localhost
@@ -49,22 +49,37 @@ docker service create --publish mode=host,target=3005,published=3005 --env MYSQL
 
 ### kong
 ```
-docker service create --mode global --publish mode=host,target=8080,published=8080 --publish mode=host,target=8443,published=8443 --publish mode=host,target=8001,published=8001 --env DNS_RESOLVER=172.17.0.1 --env SERVICE_NAME=kong --env KONG_DATABASE=postgres --env REDIS_AUTH=notSecureP455w0rd --env KONG_PG_HOST=postgres.service.consul --env KONG_PG_PORT=5432  --env APP_HOST=idpro.service.consul --env APP_HOST_PROTOCOL=http --env APP_HOST_PORT=3005 --env GATEWAY_SCHEME=http --env GATEWAY_IP=52.233.155.169 --env GATEWAY_PORT=80 --env GATEWAY_CALLBACK=auth/callback --env POSTGRES_USER=kong --env POSTGRES_PASSWORD=kong --env POSTGRES_DB=kong --env LOG_PORT=5000 --env LOG_HOST=172.17.0.1 --env REDIS_HOST=redis.service.consul --env REDIS_PORT=6379 --env SERVICE_8001_CHECK_HTTP=/ --env SERVICE_8001_CHECK_INTERVAL=15s --env SERVICE_8001_CHECK_TIMEOUT=3s --constraint "node.role == manager" ocbesbn/api-gw:latest
+docker service create --mode global --publish mode=host,target=8080,published=8080 --publish mode=host,target=8443,published=8443 --publish mode=host,target=8001,published=8001 --env DNS_RESOLVER=172.17.0.1 --env SERVICE_NAME=kong --env KONG_DATABASE=postgres --env REDIS_AUTH=notSecureP455w0rd --env KONG_PG_HOST=postgres.service.consul --env KONG_PG_PORT=5432  --env APP_HOST=idpro.service.consul --env APP_HOST_PROTOCOL=http --env APP_HOST_PORT=3005 --env GATEWAY_SCHEME=http --env GATEWAY_IP=52.233.155.169 --env GATEWAY_PORT=80 --env GATEWAY_CALLBACK=auth/callback --env POSTGRES_USER=kong --env POSTGRES_PASSWORD=kong --env POSTGRES_DB=kong --env LOG_PORT=5000 --env LOG_HOST=172.17.0.1 --env REDIS_HOST=redis.service.consul --env REDIS_PORT=6379 --env SERVICE_8001_CHECK_HTTP=/ --env SERVICE_8001_CHECK_INTERVAL=15s --env SERVICE_8001_CHECK_TIMEOUT=3s --env SERVICE_8001_NAME=kong-api --env SERVICE_8080_NAME=kong --env SERVICE_8443_NAME=kong-https --constraint "node.role == manager" ocbesbn/api-gw:latest
 ```
 
 ### api-registrator
 ```
-docker service create --env SERVICE_NAME=api-registrator --env CONSUL_HOST=consul --env GATEWAY_CALLBACK=/auth/callback --env KONG_HOST=kong-8001 --env KONG_PORT=8001 --env API_REGISTRY_PORT=3004 --publish mode=host,target=3004,published=3004 --constraint "node.role == worker" ocbesbn/api-registrator:latest
+docker service create --env SERVICE_NAME=api-registrator --env CONSUL_HOST=consul --env GATEWAY_CALLBACK=/auth/callback --env KONG_HOST=kong-api --env KONG_PORT=8001 --env API_REGISTRY_PORT=3004 --publish mode=host,target=3004,published=3004 --constraint "node.role == worker" ocbesbn/api-registrator:latest
 ```
+
+## Deploy application services
+Similar to infrastructure, only out of scope of this document
 
 ## Configure Automated Deployments
 
+Assuming that the service has initially been started with `docker service create` on target env.
+The depployment can update the existing service and will take into account any update parallelism and deployment settings
+configured on the service since creation.
+The deployment script will just figure out the service ID based on docker image repository name, then call `docker service update --force` specifying new image to load.
+This defaults to a rolling restart of the service and will wait for the deployment to complete before the build goes green.
+
 1. Add project to circle CI
 2. Add private key to circleci project SSH permissions
-3. edit circle.yml and add a deployment
-
-ssh dm@52.233.155.169 -p 2200 <<EOF
-docker service update --force --image ocbesbn/redis:dev $(docker service ls | grep "ocbesbn/redis" | grep -o "\S*" | grep -m 1 \".*\")
-EOF
-      - exit
-
+3. edit circle.yml and add a deployment (assuming it has been built to docker image already)
+Example
+```
+  development:
+    branch: develop
+    commands:
+      - docker login -u $DOCKER_USER -p $DOCKER_PASS -e $DOCKER_EMAIL
+      - docker tag ocbesbn/api-registrator:latest ocbesbn/api-registrator:dev
+      - docker push ocbesbn/api-registrator:dev
+      - curl https://raw.githubusercontent.com/gr4per/azureswarm/master/deploy_service.sh > deploy_service.sh
+      - chmod +x deploy_service.sh
+      - ./deploy_service.sh dm 52.233.155.169 ocbesbn/api-registrator dev
+```
