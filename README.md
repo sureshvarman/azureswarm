@@ -54,7 +54,7 @@ docker service create --mode global --publish mode=host,target=8080,published=80
 
 ### api-registrator
 ```
-docker service create --env SERVICE_NAME=api-registrator --env CONSUL_HOST=consul --env GATEWAY_CALLBACK=/auth/callback --env KONG_HOST=kong-api --env KONG_PORT=8001 --env API_REGISTRY_PORT=3004 --publish mode=host,target=3004,published=3004 --constraint "node.role == worker" ocbesbn/api-registrator:latest
+docker service create --env SERVICE_NAME=api-registrator --env CONSUL_HOST=consul --env GATEWAY_CALLBACK=auth/callback --env KONG_HOST=kong-api --env KONG_PORT=8001 --env API_REGISTRY_PORT=3004 --publish mode=host,target=3004,published=3004 --constraint "node.role == worker" ocbesbn/api-registrator:latest
 ```
 
 ## Deploy application services
