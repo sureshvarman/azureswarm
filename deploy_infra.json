@@ -97,6 +97,26 @@
         "mysqlVmNicNamePrefix": {
             "defaultValue": "mysqlVmNic",
             "type": "String"
+        },
+        "postgresVmSize": {
+            "defaultValue": "Standard_DS1_v2",
+            "type": "String"
+        },
+        "postgresAvailibilitySetName": {
+            "defaultValue": "postgresAvSet",
+            "type": "String"
+        },
+        "postgresVmNamePrefix": {
+            "defaultValue": "postgres",
+            "type": "String"
+        },
+        "postgresPassword": {
+            "defaultValue": "kong",
+            "type": "String"
+        },        
+        "postgresVmNicNamePrefix": {
+            "defaultValue": "postgresVmNic",
+            "type": "String"
         }
     },
     "variables": {
@@ -117,7 +137,10 @@
       "scaleSetStorageAccount4": "[uniqueString(concat(resourceGroup().id, parameters('scaleSetStorageAccountPrefix'), '4'))]",
       "mysqlVmName0" : "[concat(parameters('mysqlVmNamePrefix'), '0')]",
       "mysqlNetworkSecurityGroupName": "[concat(parameters('mysqlVmNamePrefix'), '-nsg')]",
-      "mysqlVmNicName0" : "[concat(parameters('mysqlVmNicNamePrefix'), '0')]"
+      "mysqlVmNicName0" : "[concat(parameters('mysqlVmNicNamePrefix'), '0')]",
+      "postgresVmName0" : "[concat(parameters('postgresVmNamePrefix'), '0')]",
+      "postgresNetworkSecurityGroupName": "[concat(parameters('postgresVmNamePrefix'), '-nsg')]",
+      "postgresVmNicName0" : "[concat(parameters('postgresVmNicNamePrefix'), '0')]"
     },
     "resources": [
         {
@@ -1209,6 +1232,182 @@
                 "[resourceId('Microsoft.Compute/virtualMachines', variables('mysqlVmName0'))]",
                 "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName0') ,'masterInstallCustomScript')]"
             ]
+        },
+        {
+            "comments": "VM set for High Availability, ensuring all VMs are distributed across 3 fault domains and 5 update domains",
+            "type": "Microsoft.Compute/availabilitySets",
+            "sku": {
+                "name": "Classic"
+            },
+            "name": "[parameters('postgresAvailibilitySetName')]",
+            "apiVersion": "2016-04-30-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "platformUpdateDomainCount": 5,
+                "platformFaultDomainCount": 3
+            },
+            "dependsOn": [
+            ]
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[variables('postgresVmNicName0')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/default')]"
+                            }
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": []
+                },
+                "enableIPForwarding": false,
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('postgresNetworkSecurityGroupName'))]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('postgresNetworkSecurityGroupName'))]"
+            ]
+        },
+        {
+            "comments": "net work security group applied to postgres nodes.",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "name": "[variables('postgresNetworkSecurityGroupName')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "default-allow-ssh",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "22",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1000,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-postgres",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "5432",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1005,
+                            "direction": "Inbound"
+                        }
+                    }
+                ]
+            },
+            "dependsOn": []
+        },
+        {
+            "comments": "The postgresServer0 is the cluster master.",
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[variables('postgresVmName0')]",
+            "apiVersion": "2016-04-30-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('postgresAvailibilitySetName'))]"
+                },
+                "hardwareProfile": {
+                    "vmSize": "[parameters('postgresVmSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "Canonical",
+                        "offer": "UbuntuServer",
+                        "sku": "16.04-LTS",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Linux",
+                        "name": "[variables('postgresVmName0')]",
+                        "createOption": "FromImage",
+                        "vhd": {
+                            "uri": "[concat('https', '://', parameters('diskStorageAccountName'), '.blob.core.windows.net', concat('/vhds/', variables('postgresVmName0'),'-osDisk.vhd'))]"
+                        },
+                        "caching": "ReadWrite"
+                    },
+                    "dataDisks": []
+                },
+                "osProfile": {
+                    "computerName": "[variables('postgresVmName0')]",
+                    "adminUsername": "[parameters('adminUserName')]",
+                    "linuxConfiguration": {
+                        "disablePasswordAuthentication": true,
+                        "ssh": {
+                            "publicKeys": [
+                                {
+                                    "path": "[concat('/home/', parameters('adminUserName'), '/.ssh/authorized_keys')]",
+                                    "keyData": "[parameters('sshPublicKey')]"
+                                }
+                            ]
+                        }
+                    },
+                    "secrets": []
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('postgresVmNicName0'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[concat('https://', parameters('diagStorageAccountName'), '.blob.core.windows.net/')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/availabilitySets', parameters('postgresAvailibilitySetName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('diskStorageAccountName'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces', variables('postgresVmNicName0'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('postgresVmName0'), '/postgresInstallCustomScript')]",
+            "apiVersion": "2016-03-30",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": [
+                        "https://raw.githubusercontent.com/gr4per/azureswarm/master/postgres-install.sh"
+                    ]
+                },
+                "protectedSettings": {
+                    "commandToExecute": "[concat('./postgres-install.sh ', parameters('location'), ' ', variables('masterVmName0'), ' ', parameters('postgresPassword'))]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('postgresVmName0'))]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('masterVmName0') ,'masterInstallCustomScript')]"
+            ]
         }       
+        
     ]
 }
