@@ -1400,7 +1400,7 @@
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('./postgres-install.sh ', parameters('location'), ' ', variables('masterVmName0'), ' ', parameters('postgresPassword'))]"
+                    "commandToExecute": "[concat('./postgres-install.sh ', parameters('location'), ' ', variables('masterVmName0'), ' ', parameters('adminUserName'), ' ', parameters('postgresPassword'))]"
                 }
             },
             "dependsOn": [

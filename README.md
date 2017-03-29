@@ -38,7 +38,7 @@ docker service create --publish mode=host,target=5432,published=5432 --env SERVI
 
 ### redis
 ```
-docker service create --publish mode=host,target=6379,published=6379 --env SERVICE_NAME=redis --env REDIS_AUTH=notSecureP455w0rd --env SERVICE_6379_CHECK_TCP=true --env SERVICE_6379_CHECK_INTERVAL=15s --env SERVICE_6379_CHECK_TIMEOUT=3s --constraint "node.role == worker" ocbesbn/redis:latest
+docker service create --mount type=volume,source=redis-data,target=/data --publish mode=host,target=6379,published=6379 --env SERVICE_NAME=redis --env REDIS_AUTH=notSecureP455w0rd --env SERVICE_6379_CHECK_TCP=true --env SERVICE_6379_CHECK_INTERVAL=15s --env SERVICE_6379_CHECK_TIMEOUT=3s --constraint "node.role == worker" ocbesbn/redis:latest
 ```
 
 ### idpro

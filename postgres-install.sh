@@ -1,7 +1,7 @@
 #!/bin/bash
 DATACENTER=$1
 MASTERVMNAME=$2
-POSTGRES_PW=$3
+POSTGRES_PW=$4
 echo "datacenter=$1"
 echo "masterVmName=$2"
 echo "adminUserName=$3"
@@ -47,4 +47,6 @@ sudo bash -c "echo \"nameserver $BRIDGE_IP\" > /etc/resolvconf/resolv.conf.d/hea
 sudo bash -c "echo \"search service.consul\" > /etc/resolvconf/resolv.conf.d/base"
 sudo resolvconf -u
 sudo echo "consul setup finished"
-sudo docker run --restart always --name postgres -e POSTGRES_PASSWORD=POSTGRES_PW --env SERVICE_NAME=postgres --env POSTGRES_USER=kong --env POSTGRES_DB=kong --env SERVICE_5432_CHECK_TCP=true --env SERVICE_5432_CHECK_INTERVAL=15s --env SERVICE_5432_CHECK_TIMEOUT=3s -d postgres:9.4
+sudo mkdir -p /postgres/data
+sudo docker run -p 5432:5432 -v /postgres/data:/var/lib/postgresql/data --restart always --name postgres -e POSTGRES_PASSWORD=$POSTGRES_PW --env SERVICE_NAME=postgres --env POSTGRES_USER=kong --env POSTGRES_DB=kong --env SERVICE_5432_CHECK_TCP=true --env SERVICE_5432_CHECK_INTERVAL=15s --env SERVICE_5432_CHECK_TIMEOUT=3s -d postgres:9.4
+sudo echo "postgres service deployed and mounted data on host fs"
