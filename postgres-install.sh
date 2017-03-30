@@ -15,7 +15,7 @@ echo "updating apt again" && sudo apt-get update
 echo "updating cache policy" && apt-cache policy docker-engine
 echo "installing docker" && sudo apt-get install -y docker-engine
 echo "adding user to docker group" && sudo usermod -aG docker $3
-sudo echo "setting nodeType in /etc/docker/daemon.json" && echo '{  "labels": ["nodetype=worker"]}' > daemon.json
+sudo echo "setting nodeType in /etc/docker/daemon.json" && echo '{  "labels": ["nodetype=postgres"]}' > daemon.json
 sudo mv daemon.json /etc/docker/
 sudo echo "restarting docker" && systemctl restart docker
 
