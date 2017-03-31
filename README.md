@@ -57,6 +57,67 @@ docker service create --mode global --publish mode=host,target=8080,published=80
 docker service create --env SERVICE_NAME=api-registrator --env CONSUL_HOST=consul --env GATEWAY_CALLBACK=auth/callback --env KONG_HOST=kong-api --env KONG_PORT=8001 --env API_REGISTRY_PORT=3004 --publish mode=host,target=3004,published=3004 --constraint "node.role == worker" ocbesbn/api-registrator:latest
 ```
 
+### ELK
+
+#### ElasticSearch
+```
+docker service create \
+-—publish mode=host,target=9200,published=9200 \
+-—publish mode=host,target=9300,published=9300 \
+—-env ES_JAVA_OPTS=“-Xmx1g -Xms1g” \
+-—env SERVICE_9200_NAME=elastic \
+-—env SERVICE_9300_NAME=elastic-TCP \
+-—env SERVICE_9200_CHECK_HTTP=/ \
+--env SERVICE_9200_CHECK_INTERVAL=15s \
+—-env SERVICE_9200_CHECK_TIMEOUT=3s \
+-—env SERVICE_9300_CHECK_TCP =/ \
+--env SERVICE_9300_CHECK_INTERVAL=15s \
+—-env SERVICE_9300_CHECK_TIMEOUT=3s \
+-—constraint "node.role == worker" ocbesbn/elasticsearch:latest
+```
+
+#### kibana
+```
+docker service create \
+-—publish mode=host,target=5601,published=5601 \
+-—env SERVICE_5601_NAME=kibana \
+-—env SERVICE_5601_CHECK_HTTP=/ \
+—-env SERVICE_5601_CHECK_INTERVAL=15s \
+—-env SERVICE_5601_CHECK_TIMEOUT=3s \
+—-env ELASTICSEARCH_IP=elastic.service.consul \
+-—constraint "node.role == worker" \
+ocbesbn/kibana:latest
+```
+
+#### logstash
+```
+docker service create \
+-—publish
+mode=host,target=5000,published=5000,protocol=udp \
+-—publish mode=host,target=12201,published=12201,protocol=udp \
+-—env SERVICE_12201_NAME=logstash-gelf \
+-—env SERVICE_12201_CHECK_UDP=/ 
+--env SERVICE_12201_CHECK_INTERVAL=15s \
+—-env SERVICE_12201_CHECK_TIMEOUT=3s \
+-—env SERVICE_5000_NAME=logstash-udp \
+-—env SERVICE_5000_CHECK_UDP=/ \
+--env SERVICE_5000_CHECK_INTERVAL=15s \
+—-env SERVICE_5000_CHECK_TIMEOUT=3s \
+—-env ELASTICSEARCH_IP=elastic.service.consul \
+-—constraint "node.hostname == postgres0" \
+ocbesbn/logstash:latest
+```
+
+##### ToDo
+Add LB for logstash, so docker not necessarily to resolve dynamic IP
+
+#### How to enable logging
+While creating docker service enable log option as 
+```
+docker service create ... --log-driver=gelf --log-opt "gelf-address=udp://logstash-gelf.service.consul:12201"
+```
+As said logstash url will change as there will be LB for logstash
+
 ## Deploy application services
 Similar to infrastructure, only out of scope of this document
 
